@@ -190,30 +190,155 @@ python3 video_converter.py
 ### Custom Format
 - **Custom FFmpeg**: Define your own parameters for maximum flexibility
 
-## 🛠️ Build System
-
-### Available Make Targets
-```bash
-make build          # Build standalone application with embedded FFmpeg
-make single         # Build single executable with PyInstaller
-make clean          # Remove build artifacts
-make deps           # Install Python dependencies
-make test           # Run application tests
-make install        # Build and install the application
-make install-single # Build and install single executable
-make dev            # Set up development environment
-make help           # Show help message
-make version        # Show version information
-```
+## 🛠️ Building from Source
 
 ### Building from Source
+
+To create the executable file from the repository files, follow these steps:
+
+#### Prerequisites
 ```bash
+# Install Python dependencies
+pip install -r requirements.txt
+
 # Install PyInstaller
 pip install pyinstaller
-
-# Build single executable
-pyinstaller --onefile --windowed --name=DaVinciResolveConverter DaVinciResolveConverter.py
 ```
+
+#### Step 1: Create the Executable
+```bash
+# Build single executable with PyInstaller
+pyinstaller --onefile --windowed --name=DaVinciResolveConverter video_converter.py
+```
+
+This command creates a single executable file that includes:
+- **Python Interpreter**: Embedded Python runtime
+- **Application Code**: Your `video_converter.py` application  
+- **Dependencies**: All required Python packages (Pillow, pyperclip, tkinter)
+- **FFmpeg**: Embedded FFmpeg binaries for video conversion
+- **System Libraries**: Required system libraries and dependencies
+
+#### Step 2: Create Distribution Package
+```bash
+# Create dist directory structure
+mkdir -p dist
+
+# Copy the PyInstaller executable
+cp dist/DaVinciResolveConverter dist/
+
+# Create desktop entry file
+cat > dist/davinci-resolve-converter.desktop << 'EOF'
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=DaVinci Resolve Video Converter
+Comment=Convert videos to DaVinci Resolve compatible formats
+Exec=DaVinciResolveConverter
+Icon=video-x-generic
+Terminal=false
+Categories=AudioVideo;Video;GTK;
+EOF
+
+# Create installer script
+cat > dist/install.sh << 'EOF'
+#!/bin/bash
+# DaVinci Resolve Video Converter - Executable Installer
+
+set -e
+
+# Colors for output
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}DaVinci Resolve Video Converter - Executable Installer${NC}"
+echo "=========================================================="
+
+# Check if running as root
+if [ "$EUID" -eq 0 ]; then
+    echo -e "${YELLOW}Warning: Running as root. This is not recommended.${NC}"
+    read -p "Continue anyway? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
+
+# Default installation directory
+INSTALL_DIR="$HOME/.local/bin"
+DESKTOP_DIR="$HOME/.local/share/applications"
+
+# Create installation directory
+echo "Creating installation directory..."
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$DESKTOP_DIR"
+
+# Copy executable
+echo "Installing executable..."
+cp DaVinciResolveConverter "$INSTALL_DIR/"
+chmod +x "$INSTALL_DIR/DaVinciResolveConverter"
+
+# Create desktop entry
+echo "Creating desktop entry..."
+cp davinci-resolve-converter.desktop "$DESKTOP_DIR/"
+
+# Update desktop database
+if command -v update-desktop-database &> /dev/null; then
+    update-desktop-database "$DESKTOP_DIR"
+fi
+
+echo -e "${GREEN}Installation completed successfully!${NC}"
+echo ""
+echo "You can now:"
+echo "1. Launch the application from your applications menu"
+echo "2. Run it from terminal: $INSTALL_DIR/DaVinciResolveConverter"
+echo "3. Uninstall by deleting: $INSTALL_DIR/DaVinciResolveConverter"
+echo ""
+echo "This is a single executable file with everything included!"
+echo "No Python, FFmpeg, or other dependencies needed!"
+EOF
+
+# Make installer executable
+chmod +x dist/install.sh
+
+# Create distribution archive
+cd dist
+tar -czf DaVinciResolveConverter-v1.0.0.tar.gz DaVinciResolveConverter davinci-resolve-converter.desktop install.sh
+cd ..
+```
+
+#### Step 3: Verify the Build
+```bash
+# Test the executable
+./dist/DaVinciResolveConverter
+
+# Check file information
+file dist/DaVinciResolveConverter
+
+# Check dependencies (should show minimal dependencies)
+ldd dist/DaVinciResolveConverter
+```
+
+#### Alternative: Using Makefile
+```bash
+# Build using the provided Makefile
+make single
+```
+
+#### Build Output
+After running the build process, you'll have:
+```
+dist/
+├── DaVinciResolveConverter          # Single executable (134MB)
+├── davinci-resolve-converter.desktop # Desktop entry file
+├── install.sh                       # Installation script
+└── DaVinciResolveConverter-v1.0.0.tar.gz # Distribution package (133MB)
+```
+
+#### Troubleshooting
+- **Large file size (134MB)**: Normal due to embedded Python and FFmpeg
+- **Permission issues**: Run `chmod +x dist/DaVinciResolveConverter`
+- **Missing dependencies**: Install with `pip install -r requirements.txt`
 
 ## 🧪 Testing
 
