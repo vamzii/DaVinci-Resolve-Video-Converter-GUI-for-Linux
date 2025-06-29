@@ -90,76 +90,65 @@ pyinstaller --onefile --windowed --name=DaVinciResolveConverter video_converter.
 
 ## 🎯 Executable Versions
 
-### PyInstaller Single-File Executable (`DaVinciResolveConverter.py`)
-- **File**: `DaVinciResolveConverter.py`
-- **Size**: 203MB
-- **Type**: Python script with embedded PyInstaller executable
-- **Lines**: 1,031 lines (mostly embedded binary data)
-- **Usage**: Run directly with `./DaVinciResolveConverter.py`
-- **Features**: Complete self-contained application with embedded FFmpeg
+### Distribution Package (Available in Releases)
+- **File**: `DaVinciResolveConverter-v1.0.0.tar.gz`
+- **Size**: 133MB (compressed)
+- **Contents**: Standalone executable + installer + desktop entry
+- **Usage**: Download from [GitHub Releases](https://github.com/vamzii/linuxdavinciconverter/releases)
+- **Features**: Complete distribution package with installation tools
 
-### Standalone Single Executable (`dist/DaVinciResolveConverter`)
-- **File**: `dist/DaVinciResolveConverter`
-- **Size**: 134MB
+### Built Executable
+- **File**: `DaVinciResolveConverter` (created when building)
+- **Size**: ~134MB
 - **Type**: ELF 64-bit LSB executable
 - **Architecture**: x86-64
 - **Usage**: Run directly or install via `install.sh`
-- **Features**: Same functionality, smaller size, better integration
-
-### Distribution Package (`DaVinciResolveConverter-Executable.tar.gz`)
-- **File**: `DaVinciResolveConverter-Executable.tar.gz`
-- **Size**: 133MB (compressed)
-- **Contents**: Standalone executable + installer + desktop entry
-- **Usage**: Extract and install for end users
-- **Features**: Complete distribution package with installation tools
+- **Features**: Self-contained with embedded Python and FFmpeg
 
 ## 📦 Installation Options
 
-### Option 1: PyInstaller Executable (Direct)
+### Option 1: Download from GitHub Releases (Recommended)
 ```bash
-# Make executable
-chmod +x DaVinciResolveConverter.py
-
-# Run directly
-./DaVinciResolveConverter.py
-```
-
-### Option 2: Using Installer (Recommended)
-```bash
+# Download from releases page
 # Extract the archive
-tar -xzf DaVinciResolveConverter-Executable.tar.gz
+tar -xzf DaVinciResolveConverter-v1.0.0.tar.gz
 cd dist
 
-# Run installer
+# Install (creates desktop entry and adds to PATH)
 ./install.sh
-```
 
-The installer will:
-- Install to `~/.local/bin/DaVinciResolveConverter`
-- Create desktop entry for easy launching
-- Set up proper permissions
-- Update desktop database
-
-### Option 3: Direct Execution
-```bash
-# Extract and run directly
-tar -xzf DaVinciResolveConverter-Executable.tar.gz
-cd dist
-chmod +x DaVinciResolveConverter
+# Or run directly without installation
 ./DaVinciResolveConverter
 ```
 
-### Option 4: Development Setup
+### Option 2: Development Environment
 ```bash
-# Clone or download source
-git clone <repository-url>
+# Clone the repository
+git clone https://github.com/vamzii/linuxdavinciconverter.git
 cd linuxdavinciconverter
 
 # Install dependencies
 pip install -r requirements.txt
 
-# Run in development mode
+# Run the application
 python3 video_converter.py
+```
+
+### Option 3: Build Your Own Executable
+```bash
+# Clone the repository
+git clone https://github.com/vamzii/linuxdavinciconverter.git
+cd linuxdavinciconverter
+
+# Install dependencies and PyInstaller
+pip install -r requirements.txt
+pip install pyinstaller
+
+# Build executable
+pyinstaller --onefile --windowed --name=DaVinciResolveConverter video_converter.py
+
+# Run the built executable
+./dist/DaVinciResolveConverter
 ```
 
 ## 🎮 Usage Guide
@@ -196,8 +185,6 @@ python3 video_converter.py
 - **Custom FFmpeg**: Define your own parameters for maximum flexibility
 
 ## 🛠️ Building from Source
-
-### Building from Source
 
 To create the executable file from the repository files, follow these steps:
 
@@ -432,7 +419,7 @@ ldd DaVinciResolveConverter
 ### Setting Up Development Environment
 ```bash
 # Clone repository
-git clone <repository-url>
+git clone https://github.com/vamzii/linuxdavinciconverter.git
 cd linuxdavinciconverter
 
 # Set up development environment
@@ -455,7 +442,7 @@ python3 video_converter.py
 make single
 
 # Create distribution package
-tar -czf DaVinciResolveConverter-Executable.tar.gz dist/
+tar -czf DaVinciResolveConverter-v1.0.0.tar.gz dist/
 ```
 
 ## 🤝 Contributing
