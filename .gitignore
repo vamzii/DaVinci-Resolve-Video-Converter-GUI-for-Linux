@@ -120,4 +120,8 @@ converted_videos/
 temp/
 *.mxf
 *.mov
-*.avi 
+*.avi
+
+# Large executable files (exceed GitHub's 100MB limit)
+DaVinciResolveConverter-Executable.tar.gz
+DaVinciResolveConverter.py 
