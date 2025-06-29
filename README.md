@@ -13,41 +13,29 @@ linuxdavinciconverter/
 ├── 🐍 video_converter.py                  # Main GUI application (42KB, 980 lines)
 ├── 🐍 test_converter.py                   # Application tests (5.7KB, 173 lines)
 ├── 🐍 test_progress.py                    # Progress tracking tests (702B, 25 lines)
-├── 🐍 run_converter.sh                    # Shell script to run the application
-├── 📦 DaVinciResolveConverter-Executable.tar.gz  # Distribution package (133MB)
-├── 📦 DaVinciResolveConverter.py         # PyInstaller single-file executable (203MB, 1,031 lines)
-└── 📁 dist/                               # Distribution directory
-    ├── 🚀 DaVinciResolveConverter        # Single executable (134MB)
-    ├── 📄 davinci-resolve-converter.desktop # Desktop entry file
-    └── 📄 install.sh                      # Installation script
+└── 🐍 run_converter.sh                    # Shell script to run the application
 ```
+
+**Note**: Large executable files are not included in this repository due to GitHub's file size limits. See the [Releases](https://github.com/vamzii/linuxdavinciconverter/releases) section for downloadable executables.
 
 ## 🚀 Quick Start
 
-### Option 1: PyInstaller Single-File Executable (Direct)
+### Option 1: Download from GitHub Releases (Recommended)
+1. Go to [Releases](https://github.com/vamzii/linuxdavinciconverter/releases)
+2. Download `DaVinciResolveConverter-v1.0.0.tar.gz`
+3. Extract and install:
+   ```bash
+   tar -xzf DaVinciResolveConverter-v1.0.0.tar.gz
+   cd dist
+   ./install.sh
+   ```
+
+### Option 2: Development Environment
 ```bash
-# Run the PyInstaller-generated single-file executable directly
-./DaVinciResolveConverter.py
+# Clone the repository
+git clone https://github.com/vamzii/linuxdavinciconverter.git
+cd linuxdavinciconverter
 
-# Or with Python (if needed)
-python3 DaVinciResolveConverter.py
-```
-
-### Option 2: Single Executable (Recommended for End Users)
-```bash
-# Download and extract
-tar -xzf DaVinciResolveConverter-Executable.tar.gz
-cd dist
-
-# Install (creates desktop entry and adds to PATH)
-./install.sh
-
-# Or run directly without installation
-./DaVinciResolveConverter
-```
-
-### Option 3: Development Environment
-```bash
 # Install dependencies
 pip install -r requirements.txt
 
@@ -56,6 +44,23 @@ python3 video_converter.py
 
 # Or use the shell script
 ./run_converter.sh
+```
+
+### Option 3: Build Your Own Executable
+```bash
+# Clone the repository
+git clone https://github.com/vamzii/linuxdavinciconverter.git
+cd linuxdavinciconverter
+
+# Install dependencies and PyInstaller
+pip install -r requirements.txt
+pip install pyinstaller
+
+# Build executable
+pyinstaller --onefile --windowed --name=DaVinciResolveConverter video_converter.py
+
+# Run the built executable
+./dist/DaVinciResolveConverter
 ```
 
 ## ✨ Features
@@ -417,18 +422,10 @@ ldd DaVinciResolveConverter
 - **`requirements.txt`**: Python dependencies (Pillow, pyperclip)
 - **`.gitignore`**: Git ignore patterns for build artifacts
 
-### Executable Files
-- **`DaVinciResolveConverter.py`**: PyInstaller-generated single-file executable (203MB, 1,031 lines)
-  - Contains embedded Python interpreter, FFmpeg binaries, and all dependencies
-  - Can be run directly: `./DaVinciResolveConverter.py`
-  - Self-contained with no external dependencies
-  - Larger size due to embedded Python interpreter
-
-### Distribution Files
-- **`DaVinciResolveConverter-Executable.tar.gz`**: Complete distribution package (133MB)
-- **`dist/DaVinciResolveConverter`**: Standalone executable (134MB)
-- **`dist/install.sh`**: Installation script with desktop integration
-- **`dist/davinci-resolve-converter.desktop`**: Desktop entry file
+### Distribution Files (Available in Releases)
+- **`DaVinciResolveConverter-v1.0.0.tar.gz`**: Complete distribution package (133MB)
+  - Contains standalone executable, installer, and desktop entry
+  - Download from [GitHub Releases](https://github.com/vamzii/linuxdavinciconverter/releases)
 
 ## 🔄 Development Workflow
 
@@ -502,11 +499,11 @@ When reporting issues, please include:
 
 - **Total Lines of Code**: ~1,200+ lines
 - **Main Application**: 980 lines (video_converter.py)
-- **PyInstaller Executable**: 1,031 lines (DaVinciResolveConverter.py)
 - **Test Coverage**: 173 lines (test_converter.py) + 25 lines (test_progress.py)
 - **Build System**: 81 lines (Makefile)
 - **Documentation**: 157 lines (README.md)
-- **Distribution Size**: 133MB (compressed), 134MB (standalone executable), 203MB (PyInstaller executable)
+- **Repository Size**: ~50KB (source code only)
+- **Distribution Size**: 133MB (available in releases)
 
 ## 🎯 Roadmap
 
