@@ -233,14 +233,40 @@ class VideoConverter:
         self.video_tree.bind("<Button-3>", self.show_context_menu)
         
     def browse_input(self):
-        """Browse for input directory"""
-        directory = filedialog.askdirectory(title="Select Input Directory")
+        """Browse for input directory using native file dialog"""
+        try:
+            # Try to use native file dialog first
+            result = subprocess.run(['zenity', '--file-selection', '--directory', '--title=Select Input Directory'], 
+                                  capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                directory = result.stdout.strip()
+                if directory:
+                    self.input_directory.set(directory)
+                    return
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            pass
+        
+        # Fallback to tkinter dialog
+        directory = filedialog.askdirectory(title="Select Input Directory", initialdir=os.path.expanduser("~"))
         if directory:
             self.input_directory.set(directory)
             
     def browse_output(self):
-        """Browse for output directory"""
-        directory = filedialog.askdirectory(title="Select Output Directory")
+        """Browse for output directory using native file dialog"""
+        try:
+            # Try to use native file dialog first
+            result = subprocess.run(['zenity', '--file-selection', '--directory', '--title=Select Output Directory'], 
+                                  capture_output=True, text=True, timeout=30)
+            if result.returncode == 0:
+                directory = result.stdout.strip()
+                if directory:
+                    self.output_directory.set(directory)
+                    return
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.SubprocessError):
+            pass
+        
+        # Fallback to tkinter dialog
+        directory = filedialog.askdirectory(title="Select Output Directory", initialdir=os.path.expanduser("~"))
         if directory:
             self.output_directory.set(directory)
             
@@ -528,6 +554,52 @@ class VideoConverter:
     def convert_single_video(self, video_path):
         """Convert a single video file using Avidemux AppImage to MOV (Xvid4+Lame)"""
         try:
+            # Find Avidemux AppImage dynamically
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+            self.log_message(f"Debug: App directory: {app_dir}")
+            avidemux_appimage = None
+            
+            # Try multiple possible locations (STRONGLY prioritize AppImage over CLI)
+            possible_paths = [
+                os.path.abspath(os.path.join(app_dir, '..', '..', 'tools', 'avidemux.appImage')),  # AppImage structure (from usr/bin)
+                os.path.abspath(os.path.join(app_dir, '..', 'tools', 'avidemux.appImage')),        # AppImage structure (from usr)
+                os.path.abspath(os.path.join(app_dir, 'tools', 'avidemux.appImage')),              # Development
+                os.path.abspath(os.path.join(app_dir, 'avidemux_2.8.1.appImage')),                 # Original filename
+                './avidemux_2.8.1.appImage',                                                         # Current directory
+                # Only try system CLI as last resort
+                '/usr/bin/avidemux3_cli',                                                          # System CLI (fallback)
+                '/usr/bin/avidemux_cli'                                                            # Alternative system CLI
+            ]
+            
+            # First, try to find any AppImage specifically
+            appimage_paths = [
+                os.path.abspath(os.path.join(app_dir, '..', '..', 'tools', 'avidemux.appImage')),  # AppImage structure (from usr/bin)
+                os.path.abspath(os.path.join(app_dir, '..', 'tools', 'avidemux.appImage')),        # AppImage structure (from usr)
+                os.path.abspath(os.path.join(app_dir, 'tools', 'avidemux.appImage')),              # Development
+                os.path.abspath(os.path.join(app_dir, 'avidemux_2.8.1.appImage')),                 # Original filename
+                './avidemux_2.8.1.appImage'                                                         # Current directory
+            ]
+            
+            for path in appimage_paths:
+                self.log_message(f"Debug: Checking AppImage path: {path} (exists: {os.path.exists(path)})")
+                if os.path.exists(path):
+                    avidemux_appimage = path
+                    self.log_message(f"Found Avidemux AppImage at: {avidemux_appimage}")
+                    break
+            
+            # Only if no AppImage found, try CLI
+            if not avidemux_appimage:
+                for path in possible_paths[4:]:  # Skip the AppImage paths we already checked
+                    if os.path.exists(path):
+                        avidemux_appimage = path
+                        self.log_message(f"Found Avidemux CLI at: {avidemux_appimage}")
+                        break
+            
+            if not avidemux_appimage:
+                self.log_message("❌ Error: Could not find Avidemux AppImage or CLI")
+                self.log_message(f"Tried AppImage paths: {appimage_paths}")
+                return False
+
             # Prepare output filename (always .mov)
             input_name = os.path.splitext(os.path.basename(video_path))[0]
             output_name = f"{input_name}.mov"
@@ -547,14 +619,13 @@ class VideoConverter:
                 # For "overwrite", just use the original path
 
             # Build Avidemux AppImage command
-            avidemux_appimage = './avidemux_2.8.1.appImage'
             cmd = [
                 avidemux_appimage,
                 '--nogui',
                 '--load', video_path,
                 '--video-codec', 'xvid4',
                 '--audio-codec', 'Lame',
-                '--output-format', 'MOV',
+                '--output-format', 'MOV',  # Keep MOV format
                 '--save', output_path,
                 '--quit'
             ]
@@ -571,7 +642,7 @@ class VideoConverter:
                 if self.stop_conversion:
                     process.terminate()
                     return False
-                # Read a line from stdout (Avidemux output)
+                # Read a line
                 if process.stdout:
                     line = process.stdout.readline()
                     if not line and process.poll() is not None:
@@ -588,15 +659,23 @@ class VideoConverter:
             # Wait for process to complete
             return_code = process.wait()
 
-            if return_code == 0:
-                self.log_message(f"✓ Successfully converted: {os.path.basename(output_path)}")
-                return True
+            # Check if output file actually exists
+            if return_code == 0 and os.path.exists(output_path):
+                file_size = os.path.getsize(output_path)
+                if file_size > 0:
+                    self.log_message(f"✓ Successfully converted: {os.path.basename(output_path)} ({file_size} bytes)")
+                    return True
+                else:
+                    self.log_message(f"✗ Conversion failed: Output file is empty")
+                    return False
             else:
                 # Get any remaining error output
                 if process.stderr:
                     stderr_output = process.stderr.read()
                     if stderr_output:
                         self.log_message(f"✗ Conversion failed: {stderr_output}")
+                if not os.path.exists(output_path):
+                    self.log_message(f"✗ Conversion failed: Output file not created")
                 return False
 
         except subprocess.TimeoutExpired:
