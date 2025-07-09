@@ -21,21 +21,35 @@ class VideoConverter:
     def __init__(self, root):
         self.root = root
         self.root.title("DaVinci Resolve Video Converter")
-        self.root.geometry("800x600")
-        self.root.configure(bg='#2b2b2b')
+        self.root.geometry("900x700")
         
         # Find FFmpeg binary
         self.ffmpeg_path = self.find_ffmpeg()
         self.ffprobe_path = self.find_ffprobe()
         
-        # Configure style for dark theme
+        # Configure style for native theme
         self.style = ttk.Style()
-        self.style.theme_use('clam')
-        self.style.configure('TFrame', background='#2b2b2b')
-        self.style.configure('TLabel', background='#2b2b2b', foreground='#ffffff')
-        self.style.configure('TButton', background='#404040', foreground='#ffffff')
-        self.style.configure('TRadiobutton', background='#2b2b2b', foreground='#ffffff')
-        self.style.configure('TCheckbutton', background='#2b2b2b', foreground='#ffffff')
+        
+        # Try to use system theme first
+        available_themes = self.style.theme_names()
+        if 'plastik' in available_themes:
+            self.style.theme_use('plastik')
+        elif 'alt' in available_themes:
+            self.style.theme_use('alt')
+        else:
+            self.style.theme_use('clam')
+        
+        # Configure native-looking styles
+        self.style.configure('Title.TLabel', font=('Sans', 16, 'bold'))
+        self.style.configure('Heading.TLabel', font=('Sans', 12, 'bold'))
+        self.style.configure('Info.TLabel', font=('Sans', 9))
+        
+        # Configure button styles
+        self.style.configure('Primary.TButton', font=('Sans', 10, 'bold'))
+        self.style.configure('Secondary.TButton', font=('Sans', 9))
+        
+        # Configure frame styles
+        self.style.configure('Card.TFrame', relief='solid', borderwidth=1)
         
         # Supported formats
         self.supported_formats = {
@@ -77,9 +91,9 @@ class VideoConverter:
         
     def setup_ui(self):
         """Setup the user interface"""
-        # Main frame
-        main_frame = ttk.Frame(self.root, padding="10")
-        main_frame.grid(row=0, column=0, sticky="nsew")
+        # Main frame with native styling
+        main_frame = ttk.Frame(self.root, padding="15", style='Card.TFrame')
+        main_frame.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
         
         # Configure grid weights
         self.root.columnconfigure(0, weight=1)
@@ -89,7 +103,7 @@ class VideoConverter:
         
         # Title
         title_label = ttk.Label(main_frame, text="DaVinci Resolve Video Converter", 
-                               font=('Arial', 16, 'bold'))
+                               style='Title.TLabel')
         title_label.grid(row=0, column=0, columnspan=3, pady=(0, 20))
         
         # Format selection
@@ -111,7 +125,7 @@ class VideoConverter:
         ttk.Label(dir_frame, text="Input Directory:").grid(row=0, column=0, sticky="w", pady=2)
         input_entry = ttk.Entry(dir_frame, textvariable=self.input_directory, width=50)
         input_entry.grid(row=0, column=1, sticky="ew", padx=(10, 5), pady=2)
-        ttk.Button(dir_frame, text="Browse", command=self.browse_input).grid(row=0, column=2, pady=2)
+        ttk.Button(dir_frame, text="Browse", command=self.browse_input, style='Secondary.TButton').grid(row=0, column=2, pady=2)
         
         # Add keyboard shortcuts for input directory
         input_entry.bind('<Control-z>', self.undo_input_directory)
@@ -133,7 +147,7 @@ class VideoConverter:
         ttk.Label(dir_frame, text="Output Directory:").grid(row=1, column=0, sticky="w", pady=2)
         output_entry = ttk.Entry(dir_frame, textvariable=self.output_directory, width=50)
         output_entry.grid(row=1, column=1, sticky="ew", padx=(10, 5), pady=2)
-        ttk.Button(dir_frame, text="Browse", command=self.browse_output).grid(row=1, column=2, pady=2)
+        ttk.Button(dir_frame, text="Browse", command=self.browse_output, style='Secondary.TButton').grid(row=1, column=2, pady=2)
         
         # Add keyboard shortcuts for output directory
         output_entry.bind('<Control-z>', self.undo_output_directory)
@@ -155,15 +169,15 @@ class VideoConverter:
         button_frame = ttk.Frame(main_frame)
         button_frame.grid(row=3, column=0, columnspan=3, pady=(0, 10))
         
-        ttk.Button(button_frame, text="Scan Videos", command=self.scan_videos).pack(side=tk.LEFT, padx=(0, 10))
-        self.convert_button = ttk.Button(button_frame, text="Convert Videos", command=self.start_conversion)
+        ttk.Button(button_frame, text="Scan Videos", command=self.scan_videos, style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 10))
+        self.convert_button = ttk.Button(button_frame, text="Convert Videos", command=self.start_conversion, style='Primary.TButton')
         self.convert_button.pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Select All", command=self.select_all_videos).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Deselect All", command=self.deselect_all_videos).pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Button(button_frame, text="Clear List", command=self.clear_list).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Select All", command=self.select_all_videos, style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Deselect All", command=self.deselect_all_videos, style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(button_frame, text="Clear List", command=self.clear_list, style='Secondary.TButton').pack(side=tk.LEFT, padx=(0, 10))
         
         # Selection counter
-        self.selection_label = ttk.Label(button_frame, text="Selected: 0")
+        self.selection_label = ttk.Label(button_frame, text="Selected: 0", style='Info.TLabel')
         self.selection_label.pack(side=tk.RIGHT, padx=(10, 0))
         
         # Video list
@@ -189,9 +203,11 @@ class VideoConverter:
         self.video_tree.column('Duration', width=100)
         self.video_tree.column('Status', width=100)
         
-        # Add tooltip for checkbox column
-        self.video_tree.tag_configure('checkbox', background='#404040')
-        self.video_tree.tag_configure('selected', background='#606060')
+        # Configure treeview styling for native look
+        self.video_tree.tag_configure('selected', background='#e0e0e0')
+        self.video_tree.tag_configure('converting', background='#fff3cd')
+        self.video_tree.tag_configure('completed', background='#d4edda')
+        self.video_tree.tag_configure('error', background='#f8d7da')
         
         # Scrollbar
         scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.video_tree.yview)
@@ -221,7 +237,7 @@ class VideoConverter:
         log_frame.columnconfigure(0, weight=1)
         log_frame.rowconfigure(0, weight=1)
         
-        self.log_text = scrolledtext.ScrolledText(log_frame, height=8, bg='#1e1e1e', fg='#ffffff')
+        self.log_text = scrolledtext.ScrolledText(log_frame, height=8, font=('Monospace', 9))
         self.log_text.grid(row=0, column=0, sticky="nsew")
         
         # Right-click context menu
@@ -231,6 +247,33 @@ class VideoConverter:
         self.context_menu.add_command(label="Show in File Manager", command=self.show_in_file_manager)
         
         self.video_tree.bind("<Button-3>", self.show_context_menu)
+        
+        # Status bar
+        status_frame = ttk.Frame(self.root)
+        status_frame.grid(row=1, column=0, sticky="ew", padx=10, pady=(0, 5))
+        status_frame.columnconfigure(0, weight=1)
+        
+        self.status_label = ttk.Label(status_frame, text="Ready", style='Info.TLabel')
+        self.status_label.grid(row=0, column=0, sticky="w")
+        
+        # Tools info
+        self.tools_label = ttk.Label(status_frame, text="", style='Info.TLabel')
+        self.tools_label.grid(row=0, column=1, sticky="e")
+        
+        # Update tools info
+        self.update_tools_info()
+        
+    def update_tools_info(self):
+        """Update the tools information in the status bar"""
+        tools_info = []
+        if self.ffmpeg_path:
+            tools_info.append("FFmpeg ✓")
+        if self.ffprobe_path:
+            tools_info.append("FFprobe ✓")
+        tools_info.append("Avidemux ✓")
+        tools_info.append("HandBrake ✓")
+        
+        self.tools_label.config(text=" | ".join(tools_info))
         
     def browse_input(self):
         """Browse for input directory using native file dialog"""
