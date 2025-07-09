@@ -388,14 +388,14 @@ class VideoConverter:
         """Update the selected_videos list based on checkbox states"""
         self.selected_videos = []
         for item in self.video_tree.get_children():
-            values = self.video_tree.item(item)['values']
+            values = self.video_tree.item(item).get('values') or []
+            if not isinstance(values, (list, tuple)) or not values:
+                continue
             if values[0] == '☑':  # Checked videos
                 self.selected_videos.append(values[1])  # File name
-        
         # Update selection counter
         count = len(self.selected_videos)
         self.selection_label.config(text=f"Selected: {count}")
-        
         # Update convert button state
         if count > 0:
             self.convert_button.config(state='normal')
@@ -463,41 +463,59 @@ class VideoConverter:
         # Get only selected videos
         selected_video_paths = []
         for item in self.video_tree.get_children():
-            values = self.video_tree.item(item)['values']
+            values = self.video_tree.item(item).get('values') or []
+            if not isinstance(values, (list, tuple)) or not values:
+                continue
             if values[0] == '☑':  # Checked videos
                 # Find the full path for this video
                 for video_path in self.video_files:
                     if os.path.basename(video_path) == values[1]:
                         selected_video_paths.append(video_path)
                         break
-        
+
         total_videos = len(selected_video_paths)
         converted = 0
-        
+        opened_folder = False
+
         for i, video_path in enumerate(selected_video_paths):
             # Check if conversion should be stopped
             if self.stop_conversion:
                 self.log_message("Conversion stopped by user")
                 break
-                
+
             try:
                 self.log_message(f"Converting {os.path.basename(video_path)}...")
                 self.update_progress(i, total_videos)
-                
-                if self.convert_single_video(video_path):
-                    converted += 1
-                    self.update_video_status(video_path, "Completed")
+
+                if self.selected_format.get() == 'H.264':
+                    self.log_message(f"Using HandBrake for H.264 conversion: {os.path.basename(video_path)}")
+                    if self.convert_with_handbrake(video_path):
+                        converted += 1
+                        self.update_video_status(video_path, "Completed")
+                        if not opened_folder:
+                            self.open_directory(self.output_directory.get())
+                            opened_folder = True
+                    else:
+                        self.update_video_status(video_path, "Failed")
                 else:
-                    self.update_video_status(video_path, "Failed")
-                    
+                    self.log_message(f"Using Avidemux for non-H.264 conversion: {os.path.basename(video_path)}")
+                    if self.convert_single_video(video_path):
+                        converted += 1
+                        self.update_video_status(video_path, "Completed")
+                        if not opened_folder:
+                            self.open_directory(self.output_directory.get())
+                            opened_folder = True
+                    else:
+                        self.update_video_status(video_path, "Failed")
+
             except Exception as e:
                 self.log_message(f"Error converting {os.path.basename(video_path)}: {e}")
                 self.update_video_status(video_path, "Failed")
-                
+
         self.update_progress(total_videos, total_videos)
         self.is_converting = False
         self.convert_button.config(text="Convert Videos")
-        
+
         if self.stop_conversion:
             self.log_message("✓ Conversion stopped by user")
         elif converted == total_videos:
@@ -508,17 +526,13 @@ class VideoConverter:
             messagebox.showwarning("Warning", f"Only {converted}/{total_videos} videos were converted successfully")
             
     def convert_single_video(self, video_path):
-        """Convert a single video file"""
+        """Convert a single video file using Avidemux AppImage to MOV (Xvid4+Lame)"""
         try:
-            # Get format configuration
-            format_name = self.selected_format.get()
-            format_config = self.supported_formats[format_name]
-            
-            # Prepare output filename
+            # Prepare output filename (always .mov)
             input_name = os.path.splitext(os.path.basename(video_path))[0]
-            output_name = f"{input_name}{format_config['extension']}"
+            output_name = f"{input_name}.mov"
             output_path = os.path.join(self.output_directory.get(), output_name)
-            
+
             # Handle filename conflicts
             if os.path.exists(output_path):
                 if self.conflict_resolution == "skip":
@@ -531,64 +545,49 @@ class VideoConverter:
                     output_path = self.generate_unique_filename(output_path, "timestamp")
                     self.log_message(f"📝 Using timestamped filename: {os.path.basename(output_path)}")
                 # For "overwrite", just use the original path
-            
-            # Build FFmpeg command
-            cmd = [self.ffmpeg_path, '-i', video_path, '-y']  # -y to overwrite output file
-            
-            # Add format-specific options
-            if format_name == 'MJPEG':
-                cmd.extend([
-                    '-c:v', 'mjpeg',
-                    '-q:v', '2',  # Quality setting for MJPEG
-                    '-c:a', 'mp3',  # Audio codec
-                    '-b:a', '128k'  # Audio bitrate
-                ])
-            elif format_name == 'H.264':
-                cmd.extend([
-                    '-c:v', 'libx264',
-                    '-profile:v', 'baseline',
-                    '-preset', 'medium',
-                    '-crf', '23',
-                    '-c:a', 'aac',  # Audio codec
-                    '-b:a', '128k'  # Audio bitrate
-                ])
-            
-            # Add output file
-            cmd.append(output_path)
-            
-            # Log the FFmpeg command
-            self.log_message(f"FFmpeg command: {' '.join(cmd)}")
-                
+
+            # Build Avidemux AppImage command
+            avidemux_appimage = './avidemux_2.8.1.appImage'
+            cmd = [
+                avidemux_appimage,
+                '--nogui',
+                '--load', video_path,
+                '--video-codec', 'xvid4',
+                '--audio-codec', 'Lame',
+                '--output-format', 'MOV',
+                '--save', output_path,
+                '--quit'
+            ]
+
+            # Log the Avidemux command
+            self.log_message(f"Avidemux command: {' '.join(cmd)}")
+
             # Run conversion with real-time output
             process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                      text=True, bufsize=1, universal_newlines=True)
-            
+
             # Read output in real-time
             while True:
-                # Check if conversion should be stopped
                 if self.stop_conversion:
                     process.terminate()
                     return False
-                    
-                # Read a line from stderr (FFmpeg output goes to stderr)
-                if process.stderr:
-                    line = process.stderr.readline()
+                # Read a line from stdout (Avidemux output)
+                if process.stdout:
+                    line = process.stdout.readline()
                     if not line and process.poll() is not None:
                         break
                     if line:
-                        # Log FFmpeg output (filter out some verbose messages)
                         line = line.strip()
-                        if line and not line.startswith('frame=') and not line.startswith('Press'):
-                            self.log_message(f"FFmpeg: {line}")
+                        if line:
+                            self.log_message(f"Avidemux: {line}")
                 else:
-                    # If stderr is None, just check if process is done
                     if process.poll() is not None:
                         break
-                    time.sleep(0.1)  # Small delay to prevent busy waiting
-            
+                    time.sleep(0.1)
+
             # Wait for process to complete
             return_code = process.wait()
-            
+
             if return_code == 0:
                 self.log_message(f"✓ Successfully converted: {os.path.basename(output_path)}")
                 return True
@@ -599,7 +598,7 @@ class VideoConverter:
                     if stderr_output:
                         self.log_message(f"✗ Conversion failed: {stderr_output}")
                 return False
-                
+
         except subprocess.TimeoutExpired:
             self.log_message(f"✗ Conversion timed out for {os.path.basename(video_path)}")
             return False
@@ -617,8 +616,12 @@ class VideoConverter:
         """Update the status of a video in the list"""
         video_name = os.path.basename(video_path)
         for item in self.video_tree.get_children():
-            if self.video_tree.item(item)['values'][0] == video_name:
-                values = list(self.video_tree.item(item)['values'])
+            item_dict = self.video_tree.item(item)
+            values = item_dict['values'] if 'values' in item_dict and item_dict['values'] is not None else []
+            if not isinstance(values, (list, tuple)) or len(values) <= 1:
+                continue
+            if values[1] == video_name:
+                values = list(values)
                 values[3] = status
                 self.video_tree.item(item, values=values)
                 break
@@ -969,6 +972,51 @@ class VideoConverter:
             pass
             
         return 'ffprobe'  # Default fallback
+
+    def convert_with_handbrake(self, video_path):
+        """Convert a single video file using HandBrakeCLI to MP4 (Fast 1080p30 preset)"""
+        try:
+            import subprocess, os
+            input_name = os.path.splitext(os.path.basename(video_path))[0]
+            output_name = f"{input_name}_converted.mp4"
+            output_path = os.path.join(self.output_directory.get(), output_name)
+
+            # Handle filename conflicts
+            if os.path.exists(output_path):
+                if self.conflict_resolution == "skip":
+                    self.log_message(f"⏭ Skipping {os.path.basename(video_path)} (file exists)")
+                    return True
+                elif self.conflict_resolution == "overwrite":
+                    os.remove(output_path)
+                else:
+                    # Add a number suffix
+                    base, ext = os.path.splitext(output_name)
+                    n = 1
+                    while os.path.exists(output_path):
+                        output_name = f"{base}_{n}{ext}"
+                        output_path = os.path.join(self.output_directory.get(), output_name)
+                        n += 1
+
+            cmd = [
+                "HandBrakeCLI",
+                "-i", video_path,
+                "-o", output_path,
+                "--preset", "Fast 1080p30"
+            ]
+            self.log_message(f"[HandBrake] $ {' '.join(cmd)}")
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            for line in proc.stdout:
+                self.log_message(line.rstrip())
+            proc.wait()
+            if proc.returncode == 0:
+                self.log_message(f"✓ Converted (HandBrake): {os.path.basename(output_path)}")
+                return True
+            else:
+                self.log_message(f"✗ HandBrake failed for {os.path.basename(video_path)}")
+                return False
+        except Exception as e:
+            self.log_message(f"✗ HandBrake error: {e}")
+            return False
 
 def main():
     """Main function"""
