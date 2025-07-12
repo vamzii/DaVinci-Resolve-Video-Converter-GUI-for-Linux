@@ -124,4 +124,18 @@ temp/
 
 # Large executable files (exceed GitHub's 100MB limit)
 DaVinciResolveConverter-Executable.tar.gz
-DaVinciResolveConverter.py 
+DaVinciResolveConverter.py
+
+# AppImage files (too large for GitHub)
+*.AppImage
+avidemux_*.appImage
+appimagetool-*.AppImage
+
+# Build outputs
+dist_appimage/
+dist/
+build/
+
+# Temporary files
+*.tmp
+*.temp 
